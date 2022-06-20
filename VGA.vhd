@@ -13,7 +13,7 @@ entity VGA is
 	port(
 		clk_fpga		 : in	std_logic;
 		
-		rojo, verde, azul: in std_logic_vector(5 downto 0);
+		rojo, verde, azul, rojo_cuad, verde_cuad,azul_cuad: in std_logic_vector(2 downto 0);
 		
 		
 		reset	 : in	std_logic;
@@ -42,21 +42,38 @@ architecture VGA of vga is
 	
 	signal H_Blank, V_Blank:std_logic;
 	
-
+	signal cuad_H:integer;
+	signal cuad_V:integer;
+	signal cuad_H_f:integer;
+	signal cuad_V_f:integer;
 begin
 
 
-
+Process(rojo,verde,azul, rojo_cuad,verde_cuad,azul_cuad,clk,clk_fpga)
 --color out
+begin
+	if (count_clk>cuad_H) and (count_clk<cuad_H_f) and (count_Linea>cuad_V) and (count_Linea<cuad_V_f) then
 
-Rojo_out(9 downto 4) <= rojo;
-Rojo_out(3 downto 0) <= "0000";
+			Rojo_out(9 downto 7)  <= rojo_cuad;
+			Rojo_out(6 downto 0)  <= "0000000";
 
-Azul_out(9 downto 4) <= azul;
-Azul_out(3 downto 0) <= "0000";
+			Azul_out(9 downto 7)  <= azul_cuad;
+			Azul_out(6 downto 0)  <= "0000000";
 
-Verde_out(9 downto 4) <= verde;
-Verde_out(3 downto 0) <= "0000";
+			Verde_out(9 downto 7) <= verde_cuad;
+			Verde_out(6 downto 0) <= "0000000";
+
+	else
+			Rojo_out(9 downto 7) <= rojo;
+			Rojo_out(6 downto 0) <= "0000000";		
+		
+			Azul_out(9 downto 7) <= azul;
+			Azul_out(6 downto 0) <= "0000000";
+
+			Verde_out(9 downto 7) <= verde;
+			Verde_out(6 downto 0) <= "0000000";
+	end if;
+end process;
 
 
 
@@ -82,6 +99,10 @@ Verde_out(3 downto 0) <= "0000";
 --		end if;
 		if reset = '0' then
 			clk <= '0';
+			cuad_H<=444;--Cuadrado de 40x40--
+			cuad_V<=255;
+			cuad_H_f<=cuad_H+40;
+			cuad_V_f<=cuad_V+40;
 		elsif (rising_edge(clk_fpga)) then
 			clk <= not(clk);
 		end if;
