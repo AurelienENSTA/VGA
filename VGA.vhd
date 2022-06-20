@@ -12,11 +12,10 @@ entity VGA is
 
 	port(
 		clk_fpga		 : in	std_logic;
-		
-		rojo, verde, azul: in std_logic_vector(5 downto 0);
-		
-		
+		rojo, verde, azul, rojo_cuad, verde_cuad,azul_cuad: in std_logic_vector(2 downto 0);
+		up, down, righ, lef: in std_logic;
 		reset	 : in	std_logic;
+		
 		
 		VGA_HS, VGA_VS: out std_logic;
 		Rojo_out, Verde_out, Azul_out :out std_logic_vector(9 downto 0);
@@ -43,43 +42,49 @@ architecture VGA of vga is
 	signal H_Blank, V_Blank:std_logic;
 	
 
+	
+	signal cuad_H:integer:=444;
+	signal cuad_V:integer:=255;
+	signal cuad_H_f:integer:=484;
+	signal cuad_V_f:integer:=295;
+
+	
 begin
 
 
 
---color out
-
-Rojo_out(9 downto 4) <= rojo;
-Rojo_out(3 downto 0) <= "0000";
-
-Azul_out(9 downto 4) <= azul;
-Azul_out(3 downto 0) <= "0000";
-
-Verde_out(9 downto 4) <= verde;
-Verde_out(3 downto 0) <= "0000";
-
-
-
---clk lowering
-
-	process(clk_fpga, reset, clk)
---	variable cnt: integer:=0;
-	
+	Process(rojo,verde,azul, rojo_cuad,verde_cuad,azul_cuad,clk,clk_fpga, count_clk, count_Linea,cuad_H,cuad_H_f,cuad_V,cuad_V_f)
+	--color out
 	begin
---		if reset='0' then 
---			cnt :=0;
---			clk <= '0';
---		else
---			if (clk_fpga'event and clk_fpga='1') then
---				if cnt=1 then
---					cnt :=0;
---					clk <= '1';
---				else
---					cnt := cnt +1;
---					clk <= '0';
---				end if;
---			end if;
---		end if;
+		if (count_clk>cuad_H) and (count_clk<cuad_H_f) and (count_Linea>cuad_V) and (count_Linea<cuad_V_f) then
+
+				Rojo_out(9 downto 7)  <= rojo_cuad;
+				Rojo_out(6 downto 0)  <= "0000000";
+
+				Azul_out(9 downto 7)  <= azul_cuad;
+				Azul_out(6 downto 0)  <= "0000000";
+
+				Verde_out(9 downto 7) <= verde_cuad;
+				Verde_out(6 downto 0) <= "0000000";
+
+		else
+				Rojo_out(9 downto 7) <= rojo;
+				Rojo_out(6 downto 0) <= "0000000";		
+			
+				Azul_out(9 downto 7) <= azul;
+				Azul_out(6 downto 0) <= "0000000";
+
+				Verde_out(9 downto 7) <= verde;
+				Verde_out(6 downto 0) <= "0000000";
+		end if;
+	end process;
+
+
+
+--clk lowering clk = clk_fpga/2
+
+	process(clk_fpga, reset, clk)	
+	begin
 		if reset = '0' then
 			clk <= '0';
 		elsif (rising_edge(clk_fpga)) then
@@ -87,21 +92,55 @@ Verde_out(3 downto 0) <= "0000";
 		end if;
 	end process;
 
-process(clk)
-begin
-
-	if (rising_edge(clk)) then
-		count_clk <= count_clk+1;
-		if count_clk=800 then
-			count_Linea <= count_Linea+1;
-			count_clk <= 0;
-			if count_Linea=515 then
-				count_Linea <= 0;
+	
+	
+	
+	process(clk,reset, up, down, righ, lef,cuad_H,cuad_H_f,cuad_V,cuad_V_f)
+	begin
+		if reset='0' then
+		
+				cuad_H<=444;--Cuadrado de 40x40--
+				cuad_V<=255;
+				cuad_H_f<=cuad_H+40;
+				cuad_V_f<=cuad_V+40;
+		
+		elsif (rising_edge(clk)) then
+			count_clk <= count_clk+1;
+			
+			
+			
+			if count_clk=800 then
+				count_Linea <= count_Linea+1;
+				count_clk <= 0;
+				--Actualizacion de la posicion del cuadro cada linea?
+				
+				
+				if up='1' then
+					cuad_V <= cuad_V -1;
+					cuad_V_f <= cuad_V_f -1;
+				elsif down='1' then
+					cuad_V <= cuad_V +1;
+					cuad_V_f <= cuad_V_f +1;
+				elsif righ='1' then
+					cuad_H <= cuad_H +1;
+					cuad_H_f <= cuad_H_f +1;
+				elsif lef='1' then
+					cuad_H <= cuad_H -1;
+					cuad_H_f <= cuad_H_f -1;
+				
+				end if;
+				
+				
+				
+				if count_Linea=515 then
+					count_Linea <= 0;
+				end if;
+			
 			end if;
+		
 		end if;
-	end if;
 
-end process;
+	end process;
 
 
 
