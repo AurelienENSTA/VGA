@@ -12,8 +12,9 @@ entity VGA is
 
 	port(
 		clk_fpga		 : in	std_logic;
-		rojo, verde, azul, rojo_cuad, verde_cuad,azul_cuad: in std_logic_vector(2 downto 0);
+		rojo, verde, azul, rojo_cuad, verde_cuad: in std_logic_vector(2 downto 0);
 		up, down, righ, lef: in std_logic;
+		azul_cuad:in std_logic_vector(1 downto 0);
 		reset	 : in	std_logic;
 		
 		
@@ -47,7 +48,7 @@ architecture VGA of vga is
 	signal cuad_V:integer:=255;
 	signal cuad_H_f:integer:=484;
 	signal cuad_V_f:integer:=295;
-
+	signal clk_move:std_logic;
 	
 begin
 
@@ -61,8 +62,8 @@ begin
 				Rojo_out(9 downto 7)  <= rojo_cuad;
 				Rojo_out(6 downto 0)  <= "0000000";
 
-				Azul_out(9 downto 7)  <= azul_cuad;
-				Azul_out(6 downto 0)  <= "0000000";
+				Azul_out(9 downto 8)  <= azul_cuad;
+				Azul_out(7 downto 0)  <= "00000000";
 
 				Verde_out(9 downto 7) <= verde_cuad;
 				Verde_out(6 downto 0) <= "0000000";
@@ -93,45 +94,79 @@ begin
 	end process;
 
 	
-	
-	
-	process(clk,reset, up, down, righ, lef,cuad_H,cuad_H_f,cuad_V,cuad_V_f)
+	process(clk_fpga, reset)
+		variable cnt: integer:=0;
 	begin
-		if reset='0' then
+			if reset='0' then 
+			cnt :=0;
+			clk_move <= '0';
+		else
+			if rising_edge(clk_fpga) then
+				if cnt=187500 then
+					cnt :=0;
+					clk_move <= '1';
+				else
+					cnt := cnt +1;
+					clk_move <= '0';
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	
+
+	process(clk_move,reset,up,down,righ,lef)
+	begin
+	if reset='0' then
 		
 				cuad_H<=444;--Cuadrado de 40x40--
 				cuad_V<=255;
 				cuad_H_f<=cuad_H+40;
 				cuad_V_f<=cuad_V+40;
 		
-		elsif (rising_edge(clk)) then
+	elsif (rising_edge(clk_move)) then
+		
+			if up='0' then
+				
+				
+				if cuad_V >35 then
+					cuad_V <= cuad_V -1;
+					cuad_V_f <= cuad_V_f -1;
+					end if;
+			elsif down='0' then
+				if cuad_V_f<515 then
+				cuad_V <= cuad_V +1;
+				cuad_V_f <= cuad_V_f +1;
+				end if;
+			elsif righ='0' then
+				
+				if cuad_H_f < 784 then
+				
+				cuad_H <= cuad_H +1;
+				cuad_H_f <= cuad_H_f +1;
+				end if;
+			elsif lef='0' then
+				
+				if cuad_H > 144 then
+				cuad_H <= cuad_H -1;
+				cuad_H_f <= cuad_H_f -1;
+				end if;
+			end if;
+		end if;
+		end process;
+			
+	
+	process(clk,reset)
+	begin
+
+		
+		if (rising_edge(clk)) then
 			count_clk <= count_clk+1;
-			
-			
-			
+
 			if count_clk=800 then
 				count_Linea <= count_Linea+1;
 				count_clk <= 0;
-				--Actualizacion de la posicion del cuadro cada linea?
-				
-				
-				if up='1' then
-					cuad_V <= cuad_V -1;
-					cuad_V_f <= cuad_V_f -1;
-				elsif down='1' then
-					cuad_V <= cuad_V +1;
-					cuad_V_f <= cuad_V_f +1;
-				elsif righ='1' then
-					cuad_H <= cuad_H +1;
-					cuad_H_f <= cuad_H_f +1;
-				elsif lef='1' then
-					cuad_H <= cuad_H -1;
-					cuad_H_f <= cuad_H_f -1;
-				
-				end if;
-				
-				
-				
+
 				if count_Linea=515 then
 					count_Linea <= 0;
 				end if;
@@ -280,3 +315,4 @@ begin
 	VGA_clk <= clk;
 
 end vga;
+
