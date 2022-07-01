@@ -12,11 +12,11 @@ entity VGA is
 
 	port(
 		clk_fpga		 : in	std_logic;
-		
-		rojo, verde, azul, rojo_cuad, verde_cuad,azul_cuad: in std_logic_vector(2 downto 0);
-		
-		
+		rojo, verde, azul, rojo_cuad, verde_cuad: in std_logic_vector(2 downto 0);
+
+		azul_cuad:in std_logic_vector(1 downto 0);
 		reset	 : in	std_logic;
+		
 		
 		VGA_HS, VGA_VS: out std_logic;
 		Rojo_out, Verde_out, Azul_out :out std_logic_vector(9 downto 0);
@@ -42,87 +42,194 @@ architecture VGA of vga is
 	
 	signal H_Blank, V_Blank:std_logic;
 	
-	signal cuad_H:integer;
-	signal cuad_V:integer;
-	signal cuad_H_f:integer;
-	signal cuad_V_f:integer;
-begin
 
-
-Process(rojo,verde,azul, rojo_cuad,verde_cuad,azul_cuad,clk,clk_fpga)
---color out
-begin
-	if (count_clk>cuad_H) and (count_clk<cuad_H_f) and (count_Linea>cuad_V) and (count_Linea<cuad_V_f) then
-
-			Rojo_out(9 downto 7)  <= rojo_cuad;
-			Rojo_out(6 downto 0)  <= "0000000";
-
-			Azul_out(9 downto 7)  <= azul_cuad;
-			Azul_out(6 downto 0)  <= "0000000";
-
-			Verde_out(9 downto 7) <= verde_cuad;
-			Verde_out(6 downto 0) <= "0000000";
-
-	else
-			Rojo_out(9 downto 7) <= rojo;
-			Rojo_out(6 downto 0) <= "0000000";		
-		
-			Azul_out(9 downto 7) <= azul;
-			Azul_out(6 downto 0) <= "0000000";
-
-			Verde_out(9 downto 7) <= verde;
-			Verde_out(6 downto 0) <= "0000000";
-	end if;
-end process;
-
-
-
---clk lowering
-
-	process(clk_fpga, reset, clk)
---	variable cnt: integer:=0;
 	
+	signal cuad_H:integer:=444;
+	signal cuad_V:integer:=255;
+	signal cuad_H_f:integer:=484;
+	signal cuad_V_f:integer:=295;
+	signal clk_move:std_logic;
+	
+	signal up, down, righ, lef: std_logic;
+	signal direction_h, direction_v: std_logic;
+	
+begin
+
+
+
+	Process(rojo,verde,azul, rojo_cuad,verde_cuad,azul_cuad,clk,clk_fpga, count_clk, count_Linea,cuad_H,cuad_H_f,cuad_V,cuad_V_f)
+	--color out
 	begin
---		if reset='0' then 
---			cnt :=0;
---			clk <= '0';
---		else
---			if (clk_fpga'event and clk_fpga='1') then
---				if cnt=1 then
---					cnt :=0;
---					clk <= '1';
---				else
---					cnt := cnt +1;
---					clk <= '0';
---				end if;
---			end if;
---		end if;
+		if (count_clk>cuad_H) and (count_clk<cuad_H_f) and (count_Linea>cuad_V) and (count_Linea<cuad_V_f) then
+
+				Rojo_out(9 downto 7)  <= rojo_cuad;
+				Rojo_out(6 downto 0)  <= "0000000";
+
+				Azul_out(9 downto 8)  <= azul_cuad;
+				Azul_out(7 downto 0)  <= "00000000";
+
+				Verde_out(9 downto 7) <= verde_cuad;
+				Verde_out(6 downto 0) <= "0000000";
+
+		else
+				Rojo_out(9 downto 7) <= rojo;
+				Rojo_out(6 downto 0) <= "0000000";		
+			
+				Azul_out(9 downto 7) <= azul;
+				Azul_out(6 downto 0) <= "0000000";
+
+				Verde_out(9 downto 7) <= verde;
+				Verde_out(6 downto 0) <= "0000000";
+		end if;
+	end process;
+
+
+
+--clk lowering clk = clk_fpga/2
+
+	process(clk_fpga, reset, clk)	
+	begin
 		if reset = '0' then
 			clk <= '0';
-			cuad_H<=444;--Cuadrado de 40x40--
-			cuad_V<=255;
-			cuad_H_f<=cuad_H+40;
-			cuad_V_f<=cuad_V+40;
 		elsif (rising_edge(clk_fpga)) then
 			clk <= not(clk);
 		end if;
 	end process;
 
-process(clk)
-begin
-
-	if (rising_edge(clk)) then
-		count_clk <= count_clk+1;
-		if count_clk=800 then
-			count_Linea <= count_Linea+1;
-			count_clk <= 0;
-			if count_Linea=515 then
-				count_Linea <= 0;
+	
+	process(clk_fpga, reset)
+		variable cnt: integer:=0;
+	begin
+			if reset='0' then 
+			cnt :=0;
+			clk_move <= '0';
+		else
+			if rising_edge(clk_fpga) then
+				if cnt=187500 then
+					cnt :=0;
+					clk_move <= '1';
+				else
+					cnt := cnt +1;
+					clk_move <= '0';
+				end if;
 			end if;
 		end if;
-	end if;
+	end process;
+	
 
-end process;
+	
+--limit	
+	process(clk_move,reset,direction_h, direction_v)
+	begin
+	if reset='0' then
+		
+				cuad_H<=444;--Cuadrado de 40x40--
+				cuad_V<=255;
+				cuad_H_f<=cuad_H+40;
+				cuad_V_f<=cuad_V+40;
+				direction_h <= '0';
+				direction_v <= '0';
+				
+	elsif (rising_edge(clk_move)) then
+		
+			
+			
+			if direction_h='0' then
+			
+				righ <= '0';
+				lef <= '1';
+			elsif direction_h='1' then
+				righ <= '1';
+				lef <= '0';
+			end if;
+	
+
+			if righ='0' then
+				
+				if cuad_H_f < 784 then
+				
+				cuad_H <= cuad_H +1;
+				cuad_H_f <= cuad_H_f +1;
+				
+				elsif cuad_H_f = 784 then
+				direction_h<='1';
+				
+				end if;
+				
+				
+				
+			elsif lef='0' then
+				
+				if cuad_H > 144 then
+				cuad_H <= cuad_H -1;
+				cuad_H_f <= cuad_H_f -1;
+				
+				elsif cuad_H = 144 then
+				direction_h<='0';
+				end if;
+			end if;
+			
+		elsif falling_edge(clk_move) then
+
+	
+			if direction_v='0' then
+			
+				up <= '0';
+				down <= '1';
+			elsif direction_v='1' then
+				up <= '1';
+				down <= '0';
+			end if;
+			
+			
+			if up='0' then
+				if cuad_V >35 then
+					cuad_V <= cuad_V -1;
+					cuad_V_f <= cuad_V_f -1;
+					
+				elsif cuad_V =35 then
+				direction_v<='1';
+				end if;
+			
+				
+			elsif down='0' then
+				if cuad_V_f<515 then
+					cuad_V <= cuad_V +1;
+					cuad_V_f <= cuad_V_f +1;
+					
+				elsif cuad_V_f=515 then
+				direction_v<='0';
+				end if;
+				
+			
+			end if;
+			
+			
+			
+		end if;
+		end process;
+			
+	
+	process(clk,reset)
+	begin
+
+		
+		if (rising_edge(clk)) then
+			count_clk <= count_clk+1;
+
+			if count_clk=800 then
+				count_Linea <= count_Linea+1;
+				count_clk <= 0;
+
+				if count_Linea=515 then
+					count_Linea <= 0;
+				end if;
+			
+			end if;
+		
+		end if;
+
+	end process;
 
 
 
